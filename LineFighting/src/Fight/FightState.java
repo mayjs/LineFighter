@@ -1,8 +1,10 @@
 package Fight;
 
+import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.newdawn.slick.AngelCodeFont;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.Font;
 import org.newdawn.slick.GameContainer;
@@ -71,8 +73,11 @@ public class FightState extends BasicGameState{
 		 initplayers.add(new Player(playerShape.copy(),Color.red,InputDef.ARROWS));
 		 initplayers.add(new Player(playerShape.copy(),Color.blue,InputDef.AD));
 		 
-		 timeFont = new TrueTypeFont(new java.awt.Font("verdana", java.awt.Font.PLAIN, 20), false);
-		 fpsFont = new TrueTypeFont(new java.awt.Font("verdana", java.awt.Font.PLAIN, 12), false);
+		 timeFont = new AngelCodeFont("Fonts\\Latin.fnt", "Fonts\\Latin_0.tga");
+//		 timeFont = new TrueTypeFont(new java.awt.Font("verdana", java.awt.Font.PLAIN, 20), false);
+//		 fpsFont = new TrueTypeFont(new java.awt.Font("verdana", java.awt.Font.PLAIN, 12), false);
+		 System.out.println(new File("Fonts\\Latin_0.tga").exists());
+		 fpsFont = new AngelCodeFont("Fonts\\Arial Numbers small.fnt", "Fonts\\Arial Numbers small_0.tga");
 		 
 		 initNewGame(initplayers);
 		 
