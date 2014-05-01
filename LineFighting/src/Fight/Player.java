@@ -1,5 +1,7 @@
 package Fight;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 
 import org.newdawn.slick.Color;
@@ -8,9 +10,12 @@ import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Image;
 import org.newdawn.slick.Input;
 import org.newdawn.slick.SlickException;
+import org.newdawn.slick.geom.Circle;
 import org.newdawn.slick.geom.Shape;
 import org.newdawn.slick.geom.Transform;
 import org.newdawn.slick.state.StateBasedGame;
+
+import Items.Item;
 
 public class Player {
 	float rotationSpeed = (float)Math.PI/3000f,runningSpeed=0.09f; 
@@ -24,6 +29,8 @@ public class Player {
 	LinkedList<float[]> lineBuffer = new LinkedList<float[]>();
 	int minBufferLength = 5;
 	int cbuffer;
+	Circle boundingCircle;
+	HashMap<String, Item> items=new HashMap<String, Item>();
 	
 	public Player(Shape shape, Color c, int key_right, int key_left){
 		init(shape, c, key_right, key_left);
@@ -37,7 +44,7 @@ public class Player {
 		oldX = shape.getCenterX();
 		oldY = shape.getCenterY();
 		maxDeltaMovement = (float) Math.sqrt(Math.pow(shape.getMaxX() - shape.getMinX(), 2) + Math.pow(shape.getMaxY() - shape.getMinY(), 2));
-//		maxDeltaMovement *= 5;
+		boundingCircle = new Circle(shape.getCenterX(), shape.getCenterY(), shape.getBoundingCircleRadius());
 	}
 	
 	public Player(Shape shape, Color c, InputDef input){
@@ -53,7 +60,7 @@ public class Player {
 		AD
 	}
 	
-	public void update(GameContainer container, StateBasedGame game, int delta)
+	public void update(GameContainer container, StateBasedGame game, int delta, FightState state)
 			throws SlickException {
 		if(container.getInput().isKeyDown(key_right)){
 			rotation -= rotationSpeed*delta;
@@ -90,6 +97,18 @@ public class Player {
 		shape.setCenterY(oldY+vy*delta);
 	
 		deltaMovement += runningSpeed*delta;
+		
+		boundingCircle.setCenterX(shape.getCenterX());
+		boundingCircle.setCenterY(shape.getCenterY());
+		
+		for(String s : items.keySet()){
+			Item i = items.get(s);
+			if(i != null){
+				if(i.update(container, game, delta, state, this)){
+					items.put(s,null);
+				}
+			}
+		}
 	}
 	
 	private float normAngle(float angle){
@@ -150,9 +169,6 @@ public class Player {
 	
 	public void renderPlayer(GameContainer container, StateBasedGame game, Graphics g,int width,int height)
 			throws SlickException {
-//		for(float[] line : lineBuffer){
-//			drawLine(line, g, c);
-//		}
 		
 		trailBuffer1.draw();
 		trailBuffer2.draw();
@@ -163,29 +179,18 @@ public class Player {
 		} else {
 			g.fill(shape);
 		}
+//		g.draw(boundingCircle);
 	}
 	
-	public boolean doCollisionCheck(Image lines){
-//		if(playerBufferImg == null)
-//			try {
-//				playerBufferImg = new Image(lines.getWidth(),lines.getHeight());
-//			} catch (SlickException e1) {
-//				e1.printStackTrace();
-//			}
-//		Graphics g = null;
-//		try {
-//			g = playerBufferImg.getGraphics();
-//		} catch (SlickException e) {
-//			e.printStackTrace();
-//		}
-//		Graphics.setCurrent(g);
-//		g.setDrawMode(Graphics.MODE_NORMAL);
-//		g.setBackground(Color.transparent);
-//		g.clear();
-//		g.fill(shape);
-//		
-//		g.flush();
-//		
+	public void renderItems(GameContainer container, StateBasedGame game, Graphics g,int width,int height){
+		for(Item i : items.values()){
+			if(i!=null){
+				i.render(container, game, g, this);
+			}
+		}
+	}
+	
+	public boolean doCollisionCheck(Image lines){	
 		float[] points = shape.getPoints();
 		for(int i = 0; i< points.length; i+=2){
 			try{
@@ -193,26 +198,6 @@ public class Player {
 				return true;
 			}}catch(Exception e){}
 		}
-		
-//		for(int x = (int)shape.getMinX(); x <= shape.getMaxX(); x += hitDetectionAccuracy){
-//			for(int y = (int)shape.getMinY(); y <= shape.getMaxY(); y += hitDetectionAccuracy){
-//				try{
-//				if(playerBufferImg.getColor(x, y).a != 0 && lines.getColor(x, y).a != 0){
-//					try {
-//						Graphics lg = lines.getGraphics();
-//						Graphics.setCurrent(lg);
-//						lg.setColor(Color.green);
-//						lg.fill(shape);
-//						lg.setColor(Color.cyan);
-//						lg.fillRect(x-1, y-1, 3, 3);
-//						lg.flush();
-//					} catch (SlickException e) {
-//						e.printStackTrace();
-//					}
-//					return true;					
-//				}}catch(Exception ex){}
-//			}
-//		}
 		return false;
 	}
 	
@@ -262,5 +247,35 @@ public class Player {
 	
 	public Color getColor() {
 		return c;
+	}
+	
+	public Circle getBoundingCircle(){
+		return boundingCircle;
+	}
+
+	public Shape getShape() {
+		return shape;
+	}
+	
+	public void applyItem(Item i){
+		items.put(i.getCategory(), i);
+	}
+	
+	public Collection<Item> getItems(){
+		return items.values();
+	}
+	
+	public Collection<Item> getFilteredItems(Class<?>... filters){
+		LinkedList<Item> result = new LinkedList<>();
+		
+		for(Class<?> filter : filters){
+			for(Item item : items.values()){
+				if(filter.isInstance(item)){
+					result.add(item);
+				}
+			}
+		}
+		
+		return result;
 	}
 }

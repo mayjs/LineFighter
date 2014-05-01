@@ -11,7 +11,6 @@ import org.newdawn.slick.GameContainer;
 import org.newdawn.slick.Graphics;
 import org.newdawn.slick.Image;
 import org.newdawn.slick.SlickException;
-import org.newdawn.slick.TrueTypeFont;
 import org.newdawn.slick.geom.Polygon;
 import org.newdawn.slick.geom.Rectangle;
 import org.newdawn.slick.state.BasicGameState;
@@ -19,6 +18,10 @@ import org.newdawn.slick.state.StateBasedGame;
 import org.newdawn.slick.util.FontUtils;
 
 import Fight.Player.InputDef;
+import Items.CollectableItem;
+import Items.DamageListener;
+import Items.Item;
+import Items.ShieldItem;
 
 public class FightState extends BasicGameState{
 	public static final int ID = 0;
@@ -28,6 +31,7 @@ public class FightState extends BasicGameState{
 	Rectangle topBar,mainField;
 	List<Player> players;
 	List<Player> deadPlayers;
+	List<CollectableItem> groundItems=new LinkedList<CollectableItem>(),deadItems = new LinkedList<CollectableItem>();
 	long gameTime;
 	Font timeFont,fpsFont;
 	
@@ -37,10 +41,8 @@ public class FightState extends BasicGameState{
 	public void update(GameContainer container, StateBasedGame game, int delta)
 			throws SlickException {
 		for(Player p : players){
-			p.update(container, game, delta);
-			if(p.doCollisionCheck(lineLayer)){
-				deadPlayers.add(p);
-			}
+			p.update(container, game, delta,this);
+			applyDeathChecks(container, game, p);
 		}
 		for(Player d : deadPlayers){
 			if(players.contains(d)){
@@ -51,8 +53,28 @@ public class FightState extends BasicGameState{
 			gameTime += delta;
 		oldMarkerPos = markerPos;
 		markerPos += markerSpeed * delta;
+		
+		for(CollectableItem ci : groundItems){
+			if(ci.update(container, game, delta, this)) deadItems.add(ci);
+		}
+		for(CollectableItem di : deadItems){
+			groundItems.remove(di);
+		}
+		
+		deadItems.clear();
 	}
 
+	public void applyDeathChecks(GameContainer container, StateBasedGame game, Player p){
+		if(p.doCollisionCheck(lineLayer)){
+			for(Item i : p.getFilteredItems(DamageListener.class)){
+				if(!((DamageListener)i).onDamage(container, game, this)){
+					return;
+				}
+			}
+			deadPlayers.add(p);
+		}
+	}
+	
 	@Override
 	public void init(GameContainer container, StateBasedGame game)
 			throws SlickException {
@@ -123,6 +145,9 @@ public class FightState extends BasicGameState{
 		this.players.clear();
 		this.players.addAll(players);
 		deadPlayers.clear();
+		groundItems.clear();
+		
+		groundItems.add(new CollectableItem(mainField.getWidth()/2, mainField.getHeight()/2, new ShieldItem()));
 	}
 
 	
@@ -140,12 +165,6 @@ public class FightState extends BasicGameState{
 	@Override
 	public void render(GameContainer container, StateBasedGame game, Graphics g)
 			throws SlickException {
-//		Graphics.setCurrent(g);
-//		g.setBackground(Color.black);
-//		g.clear();
-//		g.setColor(Color.green);
-//		g.fillRect(mainField.getX(), mainField.getY(), mainField.getWidth(), mainField.getHeight());
-
 		//Main Part
 		g.clearWorldClip();
 //		g.setWorldClip(mainField);
@@ -165,11 +184,16 @@ public class FightState extends BasicGameState{
 		lineLayer.draw();
 		for(Player p : players){
 			p.renderPlayer(container, game, g,(int)mainField.getWidth(),(int)mainField.getHeight());
-
+			p.renderItems(container, game, g, (int)mainField.getWidth(),(int)mainField.getHeight());
 		}
+		
+		for(CollectableItem ci : groundItems){
+			ci.render(container, game, lineGraphics);
+		}
+		
 		g.translate(0, -topBar.getHeight());
 		
-		//Insert top part here
+		//Top part
 		Graphics.setCurrent(topBgGraphics);
 		for(Player p : players){
 			float oldY = p.getOldY()/mainField.getHeight() * topBg.getHeight();
@@ -207,5 +231,9 @@ public class FightState extends BasicGameState{
 	@Override
 	public int getID() {
 		return ID;
+	}
+
+	public List<Player> getPlayers() {
+		return players;
 	}
 }
